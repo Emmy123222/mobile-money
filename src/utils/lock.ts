@@ -1,5 +1,15 @@
-import Redlock, { Lock, Settings } from 'redlock';
-import { redisClient } from '../config/redis';
+import Redlock, { Lock, Settings } from "redlock";
+import { redisClient } from "../config/redis";
+
+/**
+ * Distributed lock manager using Redlock algorithm.
+ * Prevents race conditions in distributed systems.
+ *
+ * Note: Redlock v5 beta has a type compatibility issue with Redis v4 client.
+ * The RedisClientType from @redis/client is incompatible with Redlock's
+ * expected Iterable<Client> interface. Using 'as any' cast to work around
+ * this known issue until Redlock releases a stable version with proper types.
+ */
 
 /**
  * Distributed lock manager using Redlock algorithm.
@@ -15,28 +25,31 @@ class LockManager {
       retryCount: 3,
       retryDelay: 200,
       retryJitter: 200,
-      automaticExtensionThreshold: 500
+      automaticExtensionThreshold: 500,
     };
 
-    this.redlock = new Redlock([redisClient], settings);
+    this.redlock = new Redlock([redisClient] as any, settings);
 
-    this.redlock.on('error', (error) => {
-      console.error('Redlock error:', error);
+    this.redlock.on("error", (error) => {
+      console.error("Redlock error:", error);
     });
   }
 
   /**
    * Acquires a distributed lock for a given resource.
-   * 
+   *
    * @param resource - Unique identifier for the resource to lock
    * @param ttl - Time-to-live in milliseconds (auto-release after this time)
    * @returns Lock object if successful
    * @throws Error if lock cannot be acquired
-   * 
+   *
    * @example
    * const lock = await lockManager.acquire('transaction:123', 5000);
    */
-  async acquire(resource: string, ttl: number = this.defaultTTL): Promise<Lock> {
+  async acquire(
+    resource: string,
+    ttl: number = this.defaultTTL,
+  ): Promise<Lock> {
     try {
       const lock = await this.redlock.acquire([`locks:${resource}`], ttl);
       console.log(`Lock acquired: ${resource} (TTL: ${ttl}ms)`);
@@ -49,9 +62,9 @@ class LockManager {
 
   /**
    * Releases a previously acquired lock.
-   * 
+   *
    * @param lock - The lock object to release
-   * 
+   *
    * @example
    * await lockManager.release(lock);
    */
@@ -60,14 +73,14 @@ class LockManager {
       await lock.release();
       console.log(`Lock released: ${lock.resources}`);
     } catch (error) {
-      console.error('Failed to release lock:', error);
+      console.error("Failed to release lock:", error);
       throw error;
     }
   }
 
   /**
    * Extends the TTL of an existing lock.
-   * 
+   *
    * @param lock - The lock to extend
    * @param ttl - Additional time in milliseconds
    * @returns Extended lock object
@@ -78,7 +91,7 @@ class LockManager {
       console.log(`Lock extended: ${lock.resources} (+${ttl}ms)`);
       return extendedLock;
     } catch (error) {
-      console.error('Failed to extend lock:', error);
+      console.error("Failed to extend lock:", error);
       throw error;
     }
   }
@@ -86,12 +99,12 @@ class LockManager {
   /**
    * Executes a function with automatic lock acquisition and release.
    * Ensures lock is always released, even if the function throws an error.
-   * 
+   *
    * @param resource - Unique identifier for the resource to lock
    * @param fn - Async function to execute while holding the lock
    * @param ttl - Time-to-live in milliseconds
    * @returns Result of the function execution
-   * 
+   *
    * @example
    * const result = await lockManager.withLock('transaction:123', async () => {
    *   // Critical section code here
@@ -101,7 +114,7 @@ class LockManager {
   async withLock<T>(
     resource: string,
     fn: () => Promise<T>,
-    ttl: number = this.defaultTTL
+    ttl: number = this.defaultTTL,
   ): Promise<T> {
     const lock = await this.acquire(resource, ttl);
     try {
@@ -114,15 +127,18 @@ class LockManager {
   /**
    * Attempts to acquire a lock without retrying.
    * Returns null if lock cannot be acquired immediately.
-   * 
+   *
    * @param resource - Unique identifier for the resource to lock
    * @param ttl - Time-to-live in milliseconds
    * @returns Lock object if successful, null otherwise
    */
-  async tryAcquire(resource: string, ttl: number = this.defaultTTL): Promise<Lock | null> {
+  async tryAcquire(
+    resource: string,
+    ttl: number = this.defaultTTL,
+  ): Promise<Lock | null> {
     try {
-      const noRetryRedlock = new Redlock([redisClient], {
-        retryCount: 0
+      const noRetryRedlock = new Redlock([redisClient] as any, {
+        retryCount: 0,
       });
       const lock = await noRetryRedlock.acquire([`locks:${resource}`], ttl);
       console.log(`Lock acquired (no retry): ${resource}`);
@@ -145,5 +161,6 @@ export const LockKeys = {
   phoneNumber: (phone: string) => `phone:${phone}`,
   referenceNumber: (date: string) => `reference:${date}`,
   stellarAccount: (address: string) => `stellar:${address}`,
-  provider: (provider: string, phone: string) => `provider:${provider}:${phone}`
+  provider: (provider: string, phone: string) =>
+    `provider:${provider}:${phone}`,
 };

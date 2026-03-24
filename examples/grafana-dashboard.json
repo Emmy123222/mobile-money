@@ -1,0 +1,35 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Mobile Money Metrics",
+    "panels": [
+      {
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Transaction Success vs Failure",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum by (status) (rate(transaction_total[5m]))"
+          }
+        ]
+      },
+      {
+        "title": "Active Connections",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "active_connections"
+          }
+        ]
+      }
+    ]
+  }
+}

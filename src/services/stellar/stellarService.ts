@@ -1,6 +1,7 @@
 import * as StellarSdk from 'stellar-sdk';
 import { getStellarServer, getNetworkPassphrase } from '../../config/stellar';
 import dotenv from 'dotenv';
+import { transactionTotal, transactionErrorsTotal } from '../../utils/metrics';
 dotenv.config();
 
 
@@ -19,24 +20,32 @@ export class StellarService {
   }
 
   async sendPayment(destinationAddress: string, amount: string): Promise<void> {
-    const account = await this.server.loadAccount(this.issuerKeypair.publicKey());
-    
-    const transaction = new StellarSdk.TransactionBuilder(account, {
-      fee: StellarSdk.BASE_FEE,
-      networkPassphrase: getNetworkPassphrase()
-    })
-      .addOperation(
-        StellarSdk.Operation.payment({
-          destination: destinationAddress,
-          asset: StellarSdk.Asset.native(),
-          amount: amount
-        })
-      )
-      .setTimeout(30)
-      .build();
+    try {
+      const account = await this.server.loadAccount(this.issuerKeypair.publicKey());
+      
+      const transaction = new StellarSdk.TransactionBuilder(account, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: getNetworkPassphrase()
+      })
+        .addOperation(
+          StellarSdk.Operation.payment({
+            destination: destinationAddress,
+            asset: StellarSdk.Asset.native(),
+            amount: amount
+          })
+        )
+        .setTimeout(30)
+        .build();
 
-    transaction.sign(this.issuerKeypair);
-    await this.server.submitTransaction(transaction);
+      transaction.sign(this.issuerKeypair);
+      await this.server.submitTransaction(transaction);
+      
+      transactionTotal.inc({ type: 'stellar_payment', provider: 'stellar', status: 'success' });
+    } catch (error) {
+      transactionTotal.inc({ type: 'stellar_payment', provider: 'stellar', status: 'failure' });
+      transactionErrorsTotal.inc({ type: 'stellar_payment', provider: 'stellar', error_type: 'stellar_error' });
+      throw error;
+    }
   }
 
   async getBalance(address: string): Promise<string> {

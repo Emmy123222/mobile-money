@@ -18,6 +18,15 @@ import {
   haltOnTimedout,
   timeoutErrorHandler,
 } from "./middleware/timeout";
+import {
+  createQueueDashboard,
+  getQueueHealth,
+  pauseQueueEndpoint,
+  resumeQueueEndpoint,
+} from "./queue";
+
+import { register } from "./utils/metrics";
+import { metricsMiddleware } from "./middleware/metrics";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,29 +37,36 @@ const limiter = rateLimit({
   max: 100,
 });
 
-// Security + parsing
+// Middleware
+app.use(metricsMiddleware);
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(limiter);
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
 
 // Basic health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-/**
- * Liveness probe
- */
+// Liveness probe
 app.get("/healthz", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-/**
- * Readiness probe (DB + Redis)
- */
+// Readiness probe (DB + Redis)
 app.get("/ready", async (req, res) => {
-  const checks: Record<string, string> = {
+  const checks = {
     database: "down",
     redis: "down",
   };
@@ -98,6 +114,15 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/transactions", transactionDisputeRoutes);
 app.use("/api/transactions/bulk", bulkRoutes);
 app.use("/api/disputes", disputeRoutes);
+
+// Queue health + controls
+app.get("/health/queue", getQueueHealth);
+app.post("/admin/queues/pause", pauseQueueEndpoint);
+app.post("/admin/queues/resume", resumeQueueEndpoint);
+
+// Queue dashboard
+const queueRouter = createQueueDashboard();
+app.use("/admin/queues", queueRouter);
 
 // Error handling
 app.use(timeoutErrorHandler);

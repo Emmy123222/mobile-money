@@ -42,6 +42,21 @@ export const transactionErrorsTotal = new Counter({
   registers: [register],
 });
 
+// Failover metrics
+export const providerFailoverTotal = new Counter({
+  name: "provider_failover_total",
+  help: "Total number of automatic provider failovers",
+  labelNames: ["type", "from_provider", "to_provider", "reason"],
+  registers: [register],
+});
+
+export const providerFailoverAlerts = new Counter({
+  name: "provider_failover_alerts_total",
+  help: "Number of failover alert notifications emitted",
+  labelNames: ["provider"],
+  registers: [register],
+});
+
 // Connection Metrics
 export const activeConnections = new Gauge({
   name: "active_connections",

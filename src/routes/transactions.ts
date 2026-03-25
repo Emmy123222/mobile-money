@@ -8,6 +8,8 @@ import {
 } from "../controllers/transactionController";
 import { TimeoutPresets, haltOnTimedout } from "../middleware/timeout";
 
+import { validateTransaction } from "../controllers/transactionController";
+
 export const transactionRoutes = Router();
 
 // Deposit route
@@ -16,7 +18,7 @@ transactionRoutes.post(
   TimeoutPresets.long,
   haltOnTimedout,
   validateTransaction,
-  depositHandler
+  depositHandler,
 );
 
 // Withdraw route
@@ -25,7 +27,7 @@ transactionRoutes.post(
   TimeoutPresets.long,
   haltOnTimedout,
   validateTransaction,
-  withdrawHandler
+  withdrawHandler,
 );
 
 // Quick read operation

@@ -11,9 +11,12 @@ import { statsRoutes } from "./routes/stats";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectRedis, redisClient } from "./config/redis";
 import { pool } from "./config/database";
-import { globalTimeout, haltOnTimedout, timeoutErrorHandler } from "./middleware/timeout";
+import {
+  globalTimeout,
+  haltOnTimedout,
+  timeoutErrorHandler,
+} from "./middleware/timeout";
 import { responseTime } from "./middleware/responseTime";
-import { createQueueDashboard, getQueueHealth, pauseQueueEndpoint, resumeQueueEndpoint } from "./queue";
 import {
   createQueueDashboard,
   getQueueHealth,
@@ -40,10 +43,7 @@ const RATE_LIMIT_MAX_REQUESTS = parseInt(
 );
 
 const limiter = rateLimit({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   windowMs: RATE_LIMIT_WINDOW_MS,
-  windowMs: RATE_LIMIT_WINDOW_MS, // 15 minutes
   max: RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: true,
   legacyHeaders: false,
@@ -58,7 +58,7 @@ app.use(cors());
 app.use(
   express.json({
     limit: process.env.REQUEST_SIZE_LIMIT || "10mb", // Default 10mb
-  })
+  }),
 );
 
 // --- Optional: urlencoded parser with same limit ---
@@ -66,14 +66,16 @@ app.use(
   express.urlencoded({
     limit: process.env.REQUEST_SIZE_LIMIT || "10mb",
     extended: true,
-  })
+  }),
 );
 
 app.use(limiter);
 app.use(responseTime);
 
 // Health & readiness
-app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+app.get("/health", (req, res) =>
+  res.json({ status: "ok", timestamp: new Date().toISOString() }),
+);
 
 // Basic health check
 app.get("/health", (req, res) => {

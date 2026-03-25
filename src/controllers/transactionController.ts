@@ -1,4 +1,5 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+import { z } from "zod";
 import { StellarService } from "../services/stellar/stellarService";
 import { MobileMoneyService } from "../services/mobilemoney/mobileMoneyService";
 import { TransactionModel, TransactionStatus } from "../models/transaction";
@@ -23,18 +24,29 @@ const transactionLimitService = new TransactionLimitService(
 // ------------------ Validation Middleware ------------------
 export const transactionSchema = z.object({
   amount: z.number().positive({ message: "Amount must be a positive number" }),
-  phoneNumber: z.string().regex(/^\+?\d{10,15}$/, { message: "Invalid phone number format" }),
-  provider: z.enum(["mtn", "airtel", "orange"], { message: "Provider must be one of: mtn, airtel, orange" }),
-  stellarAddress: z.string().regex(/^G[A-Z2-7]{55}$/, { message: "Invalid Stellar address format" }),
+  phoneNumber: z
+    .string()
+    .regex(/^\+?\d{10,15}$/, { message: "Invalid phone number format" }),
+  provider: z.enum(["mtn", "airtel", "orange"], {
+    message: "Provider must be one of: mtn, airtel, orange",
+  }),
+  stellarAddress: z
+    .string()
+    .regex(/^G[A-Z2-7]{55}$/, { message: "Invalid Stellar address format" }),
   userId: z.string().nonempty({ message: "userId is required" }),
 });
 
-export const validateTransaction = (req: Request, res: Response, next: NextFunction) => {
+export const validateTransaction = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     transactionSchema.parse(req.body);
     next();
   } catch (err: any) {
-    const message = err.errors?.map((e: any) => e.message).join(", ") || "Invalid input";
+    const message =
+      err.errors?.map((e: any) => e.message).join(", ") || "Invalid input";
     return res.status(400).json({ error: message });
   }
 };
@@ -96,13 +108,20 @@ export const depositHandler = async (req: Request, res: Response) => {
           jobId: job.id,
         };
       },
-      15000
+      15000,
     );
 
     res.json(result);
   } catch (error) {
-    if (error instanceof Error && error.message.includes("Unable to acquire lock")) {
-      return res.status(409).json({ error: "Transaction already in progress for this phone number" });
+    if (
+      error instanceof Error &&
+      error.message.includes("Unable to acquire lock")
+    ) {
+      return res
+        .status(409)
+        .json({
+          error: "Transaction already in progress for this phone number",
+        });
     }
     res.status(500).json({ error: "Transaction failed" });
   }
@@ -132,9 +151,6 @@ export const withdrawHandler = async (req: Request, res: Response) => {
         },
       });
     }
-
-    const limitCheck = await transactionLimitService.checkTransactionLimit(userId, parseFloat(amount));
-    if (!limitCheck.allowed) return res.status(400).json({ error: "Transaction limit exceeded", details: limitCheck });
 
     const result = await lockManager.withLock(
       LockKeys.phoneNumber(phoneNumber),
@@ -166,7 +182,7 @@ export const withdrawHandler = async (req: Request, res: Response) => {
           jobId: job.id,
         };
       },
-      15000
+      15000,
     );
 
     res.json(result);
@@ -188,7 +204,8 @@ export const getTransactionHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const transaction = await transactionModel.findById(id);
-    if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+    if (!transaction)
+      return res.status(404).json({ error: "Transaction not found" });
 
     let jobProgress = null;
     if (transaction.status === TransactionStatus.Pending) {
@@ -230,31 +247,39 @@ export const cancelTransactionHandler = async (req: Request, res: Response) => {
     const { reason } = req.body;
 
     const transaction = await transactionModel.findById(id);
-    if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+    if (!transaction)
+      return res.status(404).json({ error: "Transaction not found" });
 
     if (transaction.status !== TransactionStatus.Pending)
-      return res.status(400).json({ error: `Cannot cancel transaction with status '${transaction.status}'` });
+      return res
+        .status(400)
+        .json({
+          error: `Cannot cancel transaction with status '${transaction.status}'`,
+        });
 
     await transactionModel.updateStatus(id, TransactionStatus.Cancelled);
     const updatedTransaction = await transactionModel.findById(id);
-    if (!updatedTransaction) return res.status(500).json({ error: "Failed to load transaction after cancel" });
+    if (!updatedTransaction)
+      return res
+        .status(500)
+        .json({ error: "Failed to load transaction after cancel" });
 
     if (process.env.WEBHOOK_URL) {
       try {
         await fetch(process.env.WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event: "transaction.cancelled", data: updatedTransaction }),
+          body: JSON.stringify({
+            event: "transaction.cancelled",
+            data: updatedTransaction,
+          }),
         });
       } catch (webhookError) {
         console.error("Webhook notification failed", webhookError);
       }
     }
 
-    res.json({ message: "Transaction cancelled successfully", transaction: updatedTransaction });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to cancel transaction" });
-    return res.json({
+    res.json({
       message: "Transaction cancelled successfully",
       transaction: updatedTransaction,
     });

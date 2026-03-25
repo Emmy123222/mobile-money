@@ -27,6 +27,7 @@ import { startJobs } from "./jobs/scheduler";
 
 import { register } from "./utils/metrics";
 import { metricsMiddleware } from "./middleware/metrics";
+import { HealthCheckResponse, ReadinessCheckResponse } from "./types/api";
 
 dotenv.config();
 
@@ -34,8 +35,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Rate limiter configuration
-const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // 15 minutes
-const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100');
+const RATE_LIMIT_WINDOW_MS = parseInt(
+  process.env.RATE_LIMIT_WINDOW_MS || "900000",
+); // 15 minutes
+const RATE_LIMIT_MAX_REQUESTS = parseInt(
+  process.env.RATE_LIMIT_MAX_REQUESTS || "100",
+);
 
 const limiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -64,7 +69,11 @@ app.get("/metrics", async (req, res) => {
 
 // Basic health check
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  const body: HealthCheckResponse = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  };
+  res.json(body);
 });
 
 /**
@@ -101,7 +110,7 @@ app.get("/ready", async (req, res) => {
     allReady = false;
   }
 
-  const response = {
+  const response: ReadinessCheckResponse = {
     status: allReady ? "ready" : "not ready",
     checks,
     timestamp: new Date().toISOString(),
@@ -145,7 +154,9 @@ app.use("/admin/queues", queueRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Rate limit: ${RATE_LIMIT_MAX_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
+  console.log(
+    `Rate limit: ${RATE_LIMIT_MAX_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 1000}s`,
+  );
 });
 
 export default app;

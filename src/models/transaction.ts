@@ -71,14 +71,46 @@ export class TransactionModel {
   }
 
   /** Paginated list, newest first. `limit` is capped at 100. */
-  async list(limit = 50, offset = 0): Promise<Transaction[]> {
+  async list(limit = 50, offset = 0, startDate?: string, endDate?: string): Promise<Transaction[]> {
     const capped = Math.min(Math.max(limit, 1), 100);
     const off = Math.max(offset, 0);
-    const result = await pool.query(
-      "SELECT * FROM transactions ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-      [capped, off],
-    );
+    
+    let query = "SELECT * FROM transactions WHERE 1=1";
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (startDate) {
+      query += ` AND created_at >= $${paramIndex++}`;
+      params.push(new Date(startDate).toISOString());
+    }
+    if (endDate) {
+      query += ` AND created_at <= $${paramIndex++}`;
+      params.push(new Date(endDate).toISOString());
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(capped, off);
+
+    const result = await pool.query(query, params);
     return result.rows;
+  }
+
+  async count(startDate?: string, endDate?: string): Promise<number> {
+    let query = "SELECT COUNT(*) FROM transactions WHERE 1=1";
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (startDate) {
+      query += ` AND created_at >= $${paramIndex++}`;
+      params.push(new Date(startDate).toISOString());
+    }
+    if (endDate) {
+      query += ` AND created_at <= $${paramIndex++}`;
+      params.push(new Date(endDate).toISOString());
+    }
+
+    const result = await pool.query(query, params);
+    return parseInt(result.rows[0].count);
   }
 
   async updateStatus(id: string, status: TransactionStatus): Promise<void> {

@@ -3,9 +3,8 @@ import {
   depositHandler,
   withdrawHandler,
   getTransactionHandler,
-  cancelTransactionHandler,
   validateTransaction,
-  getTransactionHistoryHandler, // Added for pagination/filtering
+  getTransactionHistoryHandler,
   updateNotesHandler,
   searchTransactionsHandler,
 } from "../controllers/transactionController";
@@ -41,8 +40,6 @@ transactionRoutes.post(
 );
 
 // Get single transaction
-transactionRoutes.get("/:id", TimeoutPresets.quick, haltOnTimedout, getTransactionHandler);
-// Quick read operation
 transactionRoutes.get(
   "/:id",
   TimeoutPresets.quick,

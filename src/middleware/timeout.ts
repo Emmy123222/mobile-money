@@ -81,6 +81,7 @@ export function customTimeout(timeoutMs: number) {
  */
 export const TimeoutPresets = {
   quick: customTimeout(5000), // 5 seconds - for simple queries
+  medium: customTimeout(15000), // 15 seconds - for report generation
   standard: customTimeout(30000), // 30 seconds - default operations
   long: customTimeout(60000), // 60 seconds - complex transactions
   extended: customTimeout(120000), // 2 minutes - batch operations

@@ -8,11 +8,8 @@ import {
   getTransactionHistoryHandler, // Added for pagination/filtering
   updateNotesHandler,
   searchTransactionsHandler,
-  validateTransaction,
 } from "../controllers/transactionController";
 import { TimeoutPresets, haltOnTimedout } from "../middleware/timeout";
-
-import { validateTransaction } from "../controllers/transactionController";
 
 export const transactionRoutes = Router();
 

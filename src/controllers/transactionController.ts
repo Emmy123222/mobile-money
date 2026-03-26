@@ -419,8 +419,7 @@ export const cancelTransactionHandler = async (req: Request, res: Response) => {
     res.json({
       message: "Transaction cancelled successfully",
       transaction: updatedTransaction,
-    };
-    return res.json(body);
+    });
   } catch (err) {
     console.error("Failed to cancel transaction:", err);
     res.status(500).json({ error: "Failed to cancel transaction" });

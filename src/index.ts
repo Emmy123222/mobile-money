@@ -8,6 +8,7 @@ import { transactionRoutes } from "./routes/transactions";
 import { bulkRoutes } from "./routes/bulk";
 import { transactionDisputeRoutes, disputeRoutes } from "./routes/disputes";
 import { statsRoutes } from "./routes/stats";
+import { reportsRoutes } from "./routes/reports";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectRedis, redisClient } from "./config/redis";
 import { pool } from "./config/database";
@@ -131,6 +132,7 @@ app.use("/api/transactions", transactionDisputeRoutes);
 app.use("/api/transactions/bulk", bulkRoutes);
 app.use("/api/disputes", disputeRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/reports", reportsRoutes);
 
 // Queue endpoints
 app.get("/health/queue", getQueueHealth);
@@ -190,5 +192,3 @@ app.listen(PORT, () => {
     `Rate limit: ${RATE_LIMIT_MAX_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MS / 1000}s`,
   );
 });
-
-export default app;
